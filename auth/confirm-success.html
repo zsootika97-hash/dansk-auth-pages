@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Danish Flow</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(160deg, #e8f0fe 0%, #f5f7fa 45%, #fff 100%);
+      color: #1a1a2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      max-width: 440px;
+      width: 100%;
+      background: #fff;
+      border-radius: 20px;
+      padding: 36px 28px;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(37, 99, 235, 0.12);
+    }
+    .brand {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #2563eb;
+      margin-bottom: 8px;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      border-radius: 50%;
+      background: #dcfce7;
+      color: #15803d;
+      font-size: 2rem;
+      line-height: 64px;
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 12px; color: #1a1a2e; }
+    p { margin: 0 0 10px; line-height: 1.55; color: #4b5563; font-size: 1rem; }
+    .en {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.92rem;
+      color: #6b7280;
+    }
+    .loading { color: #2563eb; font-weight: 500; }
+    .err { color: #b91c1c; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">Danish Flow</div>
+    <div id="loading">
+      <p class="loading">Egy pillanat… / One moment…</p>
+    </div>
+    <div id="success" class="hidden">
+      <div class="icon">✓</div>
+      <h1>Sikeres regisztráció!</h1>
+      <p>A fiókod elkészült. Nyisd meg a <strong>Danish Flow</strong> appot, és jelentkezz be ugyanazzal az email címmel és jelszóval, amit megadtál.</p>
+      <p class="en"><strong>Registration successful!</strong><br />Open the Danish Flow app and log in with the same email and password you used to sign up.</p>
+    </div>
+    <div id="error" class="hidden">
+      <h1 class="err">Hiba / Error</h1>
+      <p id="errorText" class="err"></p>
+      <p class="en">Nyisd meg az appot, és próbáld újra a regisztrációt vagy a bejelentkezést.</p>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://ugaqzfsrseyohsdazgmh.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnYXp6ZnNyc2V5b2hzZGF6Z21oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTE0MzgsImV4cCI6MjA5NDg2NzQzOH0.TEAjjJ0O38TFIvX-HOuNVw0mYEa4ioAmXWTh6C_huWM';
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function showSuccess() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error').classList.add('hidden');
+      document.getElementById('success').classList.remove('hidden');
+    }
+
+    function showError(msg) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('success').classList.add('hidden');
+      document.getElementById('error').classList.remove('hidden');
+      document.getElementById('errorText').textContent = msg || 'Ismeretlen hiba / Unknown error';
+    }
+
+    async function handleCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const hash = window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : '';
+      const hashParams = new URLSearchParams(hash);
+
+      const error = params.get('error_description') || hashParams.get('error_description') || params.get('error');
+      if (error) {
+        showError(decodeURIComponent(error.replace(/\+/g, ' ')));
+        return;
+      }
+
+      const access_token = hashParams.get('access_token');
+      const refresh_token = hashParams.get('refresh_token');
+      if (access_token && refresh_token) {
+        const { error: sessionError } = await client.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        if (sessionError) {
+          showError(sessionError.message);
+          return;
+        }
+        showSuccess();
+        return;
+      }
+
+      const token_hash = params.get('token_hash');
+      const type = params.get('type') || hashParams.get('type');
+      if (token_hash && type) {
+        const { error: verifyError } = await client.auth.verifyOtp({
+          token_hash,
+          type,
+        });
+        if (verifyError) {
+          showError(verifyError.message);
+          return;
+        }
+        showSuccess();
+        return;
+      }
+
+      // Direct visit or already confirmed — still show success
+      showSuccess();
+    }
+
+    handleCallback();
+  </script>
+</body>
+</html>
